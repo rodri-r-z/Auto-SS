@@ -1,0 +1,109 @@
+body, html {
+    height: 100%;
+    width: 100%;
+}
+
+#root {
+    height: 100%;
+    width: 100%;
+    position: relative;
+}
+
+#leftMenu {
+    position: fixed;
+    width: 200px;
+}
+
+#leftMenu + div {
+    margin-left: 250px;
+}
+
+#leftMenu > div {
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.screenModal {
+    background: #fff;
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    top: 50%;
+    z-index: 1;
+    border-top: solid 1px #000;
+    border-radius: 20px;
+    animation: fromBottomToTop forwards .3s;
+}
+
+.dnsRule {
+    margin: 10px 0;
+}
+
+small {
+    display: block;
+    margin: 10px 0;
+    color: grey;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.cup {
+    cursor: pointer;
+}
+
+.scroll-div {
+    height: 250px;
+    overflow-y: auto;
+}
+
+.scroll-div > div {
+    margin: 10px 0;
+}
+
+.scroll-div::-webkit-scrollbar {
+    width: 1px;
+    height: 1px;
+}
+
+.scroll-div::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scroll-div::-webkit-scrollbar-thumb {
+    background: #000;
+    border-radius: 12px;
+}
+
+.warningBox {
+    padding: 15px;
+    border-radius: 10px;
+    background: #f8a412;
+    color: #ffffffb7;
+}
+
+.successBox {
+    padding: 15px;
+    border-radius: 10px;
+    background: #208349;
+    color: #ffffffb7;
+}
+
+.errorBox {
+    padding: 15px;
+    border-radius: 10px;
+    background: #e74c3c;
+    color: #ffffffb7;
+}
+
+.btn {
+    margin: 5px;
+}
+
+@keyframes fromBottomToTop {
+    from {
+        top: 500%;
+    }
+    to {
+        top: 12%;
+    }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "auto-ss",
+  "version": "1.0.0",
+  "description": "A minimal Electron application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "Electron",
+    "quick",
+    "start",
+    "tutorial",
+    "demo"
+  ],
+  "author": "GitHub",
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "electron": "^25.3.2"
+  },
+  "dependencies": {
+    "keypress": "^0.2.1",
+    "natural": "^6.5.0",
+    "node-global-key-listener": "^0.1.1",
+    "node-hid": "^2.1.2",
+    "portscanner": "^2.2.0",
+    "robotjs": "^0.6.0",
+    "socket.io": "^4.7.1",
+    "usb": "^2.9.0",
+    "util": "^0.12.5",
+    "uuid": "^9.0.0"
+  }
+}

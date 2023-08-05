@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+        <link href="./styles.css" rel="stylesheet">
+        <link rel="shortcut icon" href="./public/favicon-png.png" type="image/x-icon">
+        <title>AutoSS</title>
+    </head>
+    <body>
+        <div id="root">
+            <div class="screenModal" v-if="results.error">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => results.error = false"></i>
+                    <small>Error</small>
+                    <h2 class="text-danger">Something went wrong</h2>
+                    <p>The system could not find the specified path.</p>
+                </div>
+            </div>
+            <div class="screenModal" v-if="screens.vm" id="vmScreen">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.vm = false"></i>
+                    <small>Virtual machine</small>
+                    <h2 :class="results.vm.value ? 'text-danger' : 'text-success'">{{ results.vm.value === true ? "Yes" : "No" }}</h2>
+                    <p v-if="results.vm.value">
+                        Successfully detected that this system is a virtual machine.
+                    </p>
+                    <p v-else>
+                        This system does not seem to be a virtual machine.
+                    </p>
+                    <p>CPUs</p>
+                    <div class="scroll-div">
+                        <div class="bg-light p-2" v-for="cpu in results.vm.cpus">
+                            {{ cpu.model }} - {{ cpu.speed }} MHz
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="screenModal" v-if="screens.usb" id="usbScreen">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.usb = false"></i>
+                    <small>USB Devices</small>
+                    <h2>{{ results.usb.length }}</h2>
+                    <p v-if="results.usb.length === 0">
+                        Could not detect any USB devices.
+                    </p>
+                    <p v-else>
+                        Successfully detected {{ results.usb.length }} USB devices.
+                    </p>
+                    <p>Devices</p>
+                    <div class="scroll-div">
+                        <div class="bg-light p-2" v-for="device in results.usb">
+                            <span>Nmae: <strong>{{ device.device.name }}</strong></span><br>
+                            <span>Path: <strong>{{ device.device.path }}</strong></span><br>
+                            <span>Use: <strong>{{ device.device.usage }}</strong></span><br>
+                            <span>Manufacter: <strong>{{ device.device.manufacter }}</strong></span><br>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="screenModal" v-if="screens.usbChanged" id="usbChangedScreen">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.usbChanged = false"></i>
+                    <small class="text-danger">alert</small>
+                    <h2 class="text-danger">{{ results.usbChanged.type === 0 ? "Connected" : "Disconnected" }}</h2>
+                    <p>An USB device has been {{ results.usbChanged.type === 0 ? "connected" : "disconnected" }}</p>
+                    <br><strong><small>Information</small></strong><br>
+                    <div class="warningBox" v-if="!results.usbChanged.device">
+                        <i class="fas fa-warning"></i>
+                        <span>Unable to detect the type of USB device.</span>
+                    </div>
+                </div>
+            </div>
+            <div v-if="screens.analyzePath" class="screenModal">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.analyzePath = false"></i>
+                    <small>preliminar result</small>
+                    <h2 :class='results.analyzePath.scanPreliminar.result === "malware" ? "text-danger" : "text-success"'>{{ results.analyzePath.scanPreliminar.result === "malware" ? "Malware" : "Legit" }}</h2>
+                    <small><strong>(Scanned by AI)</strong></small>
+                    <small>Scanned <b>{{ results.analyzePath.filesScanned }} files</b> in <b>{{ results.analyzePath.timeTaken / 1000 }} seconds</b></small>
+                    <small>Scanned {{ results.analyzePath.scanPreliminar.legit }} files that look like legit files</small>
+                    <small>Scanned {{ results.analyzePath.scanPreliminar.malware }} files that look like malware</small>
+                    <div class="warningBox">
+                        <i class="bi bi-stars"></i>
+                        <strong>This technology is still experimental, so it may give wrong results. Only for debugging purposes.</strong>
+                    </div>
+                    <div class="scroll-div">
+                        <br><br>
+                        <p><input type="text" placeholder="Filter" class="form-control" @input="filterMalwareOutput"></p>
+                        <div class="fileRule" v-for="e in results.analyzePath.preliminarResult" :key="e.path" :class="e.ai ? e.ai.result === 'malware' ? 'errorBox' : 'successBox' : 'errorBox'">
+                            <p>{{ e.path }}</p>
+                            <p>Detected by <strong> {{ e.detecteBy.type === "content" ? "Content" : "Name" }} </strong></p>
+                            <p>Keyword: <strong>{{ e.detecteBy.word }}</strong></p>
+                            <p v-if="e.ai">AI Prediction: <strong>{{ e.ai?.result }}</strong> in <strong>{{ e.ai?.time }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="screenModal" v-if="screens.cmdServices">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.cmdServices = false"></i>
+                    <small>cmd services</small>
+                    <h2 :class="results.cmdServices.services.length === 4 ? results.cmdServices.services.includes('DiagTrack ') ? 'text-success' : 'text-danger' : results.cmdServices.services.length === 5 ? 'text-success' : 'text-danger'">{{ results.cmdServices.services.length }} out of 5</h2>
+                    <p>{{ results.cmdServices.services.length === 4 ? results.cmdServices.services.includes('DiagTrack ') ? 'This is not a sancionable behavior' : 'This is a sancionable behavior' : results.cmdServices.services.length === 5 ? 'This is a not sancionable behavior' : 'This is a sancionable behavior' }}.</p>
+                    <p v-if="results.cmdServices.errors.length !== 0"><strong>Disabled services</strong></p>
+                    <div v-for="service of results.cmdServices.errors" :key="service" class="errorBox">
+                        <small>Service: <strong>{{ service }}</strong></small>
+                    </div>
+                    <div v-if="results.cmdServices.errors.length === 0" class="successBox">
+                        <i class="bi bi-stars"></i>
+                        <span>All services are enabled.</span>
+                    </div>
+                    <p v-if="results.cmdServices.warning"><strong>Warning</strong></p>
+                    <div v-if="results.cmdServices.warning" class="warningBox">
+                        <i class="bi bi-stars"></i>
+                        <span>Some services are not enabled, but this is not a sancionable behavior because they are optional.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screenModal" v-if="screens.dnsCheck">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.dnsCheck = false"></i>
+                    <small>dns registry</small>
+                    <h2>DNS</h2>
+                    <p>There are {{ results.dnsCheck.length }} DNS records</p>
+                    <p><input type="text" placeholder="Filter" class="form-control" @input="filterDnsOutput"></p>
+                    <div class="scroll-div">
+                        <div class="dnsRule" v-for="reg of results.dnsCheck" :key="reg" :class="reg.includes('.lol') || reg.includes('.gg') || reg.includes('.wtf') || reg.includes('.xyz') ||  reg.includes('.pro') || reg.includes('.net') || reg.includes('.rip') ? 'errorBox' : 'successBox'">
+                            <span>{{ reg }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="screenModal" v-if="screens.firewall">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.firewall = false"></i>
+                    <small>firewall rules</small>
+                    <h2>{{ results.firewall.length }} rules</h2>
+                    <p>There are {{ results.firewall.length }} firewall rules.</p>
+                    <p><input type="text" placeholder="Filter" class="form-control" @input="filterFirewallOutput"></p>
+                    <div class="scroll-div">
+                        <div class="firewallRule bg-light p-1 rounded-2" v-for="reg of results.firewall">
+                            <p v-for="(value, key) in reg">{{ key }}: <b>{{ value }}</b></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="screenModal" v-if="screens.reg.list">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.reg.list = false"></i>
+                    <small>regedit list</small>
+                    <h2 :class='results.reg.list.legit.valid ? "text-success" : "text-danger"'>{{ results.reg.list.legit.valid ? "Legit" : "Suspicious" }}</h2>
+                    <p>There are {{ results.reg.list.items.length }} items in {{ socketRequest.name }}</p>
+                    <p><input type="text" placeholder="Filter" class="form-control" @input="filterRegeditOutput"></p>
+                    <div class="scroll-div">
+                        <div class="regeditRule bg-light p-1 rounded-2" v-for="reg of results.reg.list.items" :key="reg" v-if="!socketRequest.name.includes('tcp')">
+                            <p>Route: <strong> {{ reg.split(" ")[0] ? reg.split(" ")[0] : "(Not specified)" }} </strong></p>
+                            <p>Value: <strong> {{ reg.split(" ")[1] ? reg.split(" ")[1] : "(Not specified)" }} </strong></p>
+                            <p>Data: <strong> {{ reg.split(" ")[2] ? reg.split(" ")[2] : "(Not specified)" }} </strong></p>
+                        </div>
+                        <div class="regeditRule bg-light p-1 rounded-2" v-else>
+                            <p v-for="reg of results.reg.list.items" :key="reg"> {{ reg }} </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="screenModal" v-if="screens.reg.export">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.reg.export = false"></i>
+                    <small>regedit list</small>
+                    <h2>Export</h2>
+                    <p>Items in {{ socketRequest.name }}</p>
+                    <p><input type="text" placeholder="Filter" class="form-control" @input="filterRegeditOutput"></p>
+                    <div class="scroll-div">
+                        <p class="regeditRule" v-for='item of results.reg.export.split("\n")' :key='item'> {{ item }} </p>
+                    </div>
+                </div>
+            </div>
+            <div class="screenModal" v-if="screens.usnJournal">
+                <div class="p-5">
+                    <i class="fas fa-angle-left cup" @click="() => screens.usnJournal = false"></i>
+                    <small>usn journal</small>
+                    <h2>Export</h2>
+                    <p><input type="text" placeholder="Filter" class="form-control" @input="filterFirewallOutput"></p>
+                    <div class="scroll-div">
+                        <div class="firewallRule bg-light p-1 rounded-2" v-for="reg of results.usnJournal">
+                            <p v-for="(value, key) in reg">{{ key }}: <b>{{ value }}</b></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-3">
+                <nav class="p-3">
+                    <img src="./public/favicon-png.png" alt="Brydget Cloud" id="iconMain" height="35">
+                </nav>
+                <div class="grid-menu">
+                    <div id="leftMenu">
+                        <div class="bg-light p-1 rounded-2 text-center" @click="changeSection(0)">
+                            <i class="bi bi-cpu-fill"></i>
+                            <span>System</span>
+                        </div>
+                        <div class="bg-light p-1 rounded-2 text-center" @click="changeSection(1)">
+                            <i class="fas fa-brain"></i>
+                            <span>Analytics</span>
+                        </div>
+                    </div>
+                    <div v-if="showSection == 0">
+                        <h1>System</h1>
+                        <p>Here you can manage the system.</p>
+                        <div class="p-1">
+                            <button class="btn border-primary text-primary" @click="sendDetectVm()">
+                                <span v-if="buttons.vm">Detect a VM</span>
+                                <i class="fas fa-spin fa-circle-notch" v-else></i>
+                            </button>
+                            <button class="btn border-primary text-primary" @click="detectUSB()">
+                                <span v-if="buttons.usb">USB Devices</span>
+                                <i class="fas fa-spin fa-circle-notch" v-else></i>
+                            </button>
+                            <br><br>
+                            <p><strong>External</strong></p>
+                            <button class="btn border-primary text-primary" @click="openControlPanel()">
+                                <span>Open Control Panel</span>
+                            </button>
+                            <button class="btn border-primary text-primary" @click="openHiddenIcons()">
+                                <span>Hidden Icons</span>
+                            </button>
+                            <button class="btn border-primary text-primary" @click="openRecentEls()">
+                                <span>Recent Elements</span>
+                            </button>
+                            <button class="btn border-primary text-primary" @click="openRecycleBin()">
+                                <span>Recycle Bin</span>
+                            </button>
+                            <button class="btn border-primary text-primary" @click="openUsersMenu()">
+                                <span>Users</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="showSection === 1">
+                        <h1>Analytics</h1>
+                        <p>Here you can find analytics.</p>
+                        <div class="card">
+                            <div class="card-body">
+                                <p><strong>Analyze path</strong></p>
+                                <p><input type="text" placeholder="Path" class="form-control" v-model="inputs.analyzeDirInput"></p>
+                                <button class="btn btn-primary" @click="analyzeDir()">
+                                    <span v-if="buttons.analyzePath">Analyze</span>
+                                    <i class="fas fa-spin fa-circle-notch" v-else></i>
+                                </button>
+                                <button class="btn border-primary text-primary" @click="quickCompletions1MinecraftPath()">
+                                    <span>.minecraft</span>
+                                </button>
+                                <button class="btn border-primary text-primary" @click="quickCompletions1TempPath()">
+                                    <span>Temp</span>
+                                </button>
+                                <small>* Use %user% if you don't know your user.</small>
+                            </div>
+                        </div>
+                        <p><br></p>
+                        <button class="btn border-primary text-primary" @click="checkCmdServices()">
+                            <span v-if="buttons.cmdServices">Check CMD Services</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="checkDns()">
+                            <span v-if="buttons.dnsCheck">DNS Cache</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="listFirewall()">
+                            <span v-if="buttons.firewall">Firewall Rules</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <p>
+                            <br>
+                            <strong>regEdit</strong>
+                            <br>
+                        </p>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('store', 'list')">
+                            <span v-if="buttons.regedit.store.list">Store: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('store', 'export')">
+                            <span v-if="buttons.regedit.store.export">Store: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('cache', 'list')">
+                            <span v-if="buttons.regedit.cache.list">Cache: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('cache', 'export')">
+                            <span v-if="buttons.regedit.cache.export">Cache: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('app', 'list')">
+                            <span v-if="buttons.regedit.app.list">App Switched: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('app', 'export')">
+                            <span v-if="buttons.regedit.app.export">App Switched: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('osp', 'list')">
+                            <span v-if="buttons.regedit.osp.list">OpenSavePidMru: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('osp', 'export')">
+                            <span v-if="buttons.regedit.osp.export">OpenSavePidMru: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('arch', 'list')">
+                            <span v-if="buttons.regedit.arch.list">ArchHistory: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('arch', 'export')">
+                            <span v-if="buttons.regedit.arch.export">ArchHistory: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('cidsizemenu', 'list')">
+                            <span v-if="buttons.regedit.cidsizemenu.list">CidSizeMru: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('cidsizemenu', 'export')">
+                            <span v-if="buttons.regedit.cidsizemenu.export">CidSizeMru: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('user', 'list')">
+                            <span v-if="buttons.regedit.user.list">User 1: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('user', 'export')">
+                            <span v-if="buttons.regedit.user.export">User 1: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('user2', 'list')">
+                            <span v-if="buttons.regedit.user2.list">User 2: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('user2', 'export')">
+                            <span v-if="buttons.regedit.user2.export">User 2: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('jump', 'list')">
+                            <span v-if="buttons.regedit.jump.list">ShowJumpView: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('jump', 'export')">
+                            <span v-if="buttons.regedit.jump.export">ShowJumpView: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('run', 'list')">
+                            <span v-if="buttons.regedit.run.list">RunMRU: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('run', 'export')">
+                            <span v-if="buttons.regedit.run.export">RunMRU: Export</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('tcp1', 'list')">
+                            <span v-if="buttons.regedit.tcp1.list">TCP1: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <button class="btn border-primary text-primary" @click="sendListToSocket('tcp2', 'list')">
+                            <span v-if="buttons.regedit.tcp2.list">TCP2: List</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                        <p>
+                            <br>
+                            <strong>USN Journal</strong>
+                            <br>
+                        </p>
+                        <p><input type="text" v-model="inputs.usnJournalPathInput" class="form-control" placeholder="USN Journal Output Path"></p>
+                        <button class="btn btn-primary" @click="sendUsnJournalPathToSocket()">
+                            <span v-if="buttons.usnJournal">Send</span>
+                            <i class="fas fa-spin fa-circle-notch" v-else></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+        <script type="module" src="./renderer.js"></script>
+    </body>
+</html>
