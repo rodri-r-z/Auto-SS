@@ -12,6 +12,7 @@ To avoid using uncompiled version and installing external tools, download [compi
 
 1. Node.js 18>=
 2. Git
+3. Python 3.10>=
 
 **How to use**
 
